@@ -11,9 +11,16 @@ namespace Puelloc
     {
         public Func<string, string, bool> RouteMatch { get; }
         public Func<RequsetMessage, ResponseMessage> Proc { get; }
+
         public Pipe(Func<string, string, bool> route, Func<RequsetMessage, ResponseMessage> proc)
         {
             RouteMatch = route;
+            Proc = proc;
+        }
+
+        public Pipe(string method, string urlStart, Func<RequsetMessage, ResponseMessage> proc)
+        {
+            RouteMatch = (requsetmethod, requseturl) => requsetmethod == method && requseturl.StartsWith(urlStart);
             Proc = proc;
         }
     }
@@ -21,21 +28,16 @@ namespace Puelloc
     public abstract class Message
     {
         protected internal byte[] Content { get; set; }
+
         public string Text
         {
             get => Encoding.UTF8.GetString(Content);
             set => Content = Encoding.UTF8.GetBytes(value);
         }
-        public string ProtocolVersion
-        {
-            get;
-            protected internal set;
-        } = "HTTP/1.1";
-        public HttpHeader Header
-        {
-            get;
-            protected internal set;
-        } = new HttpHeader();
+
+        public string ProtocolVersion { get; protected internal set; } = "HTTP/1.1";
+        public HttpHeader Header { get; protected internal set; } = new HttpHeader();
+
         public byte[] ToBytes()
         {
             string firstLine = this switch
@@ -48,7 +50,7 @@ namespace Puelloc
             List<byte> bres = new List<byte>(Encoding.UTF8.GetBytes(firstLine));
             if (Content != null)
             {
-                Header.AddHeader("Content-Length",Content.Length.ToString());
+                Header.AddHeader("Content-Length", Content.Length.ToString());
                 bres.AddRange(Encoding.UTF8.GetBytes(Header.ToString()));
                 bres.AddRange(Content);
             }
@@ -56,19 +58,22 @@ namespace Puelloc
             {
                 bres.AddRange(Encoding.UTF8.GetBytes(Header.ToString()));
             }
+
             return bres.ToArray();
         }
 
         public static Message Parse(string message)
         {
-            List<string> method = new List<string> { "GET", "POST", "PUT", "HEAD", "DELETE", "OPTIONS", "TRACE", "CONNECT" };
-            string[] headerBody = message.Split(new[] { "\r\n\r\n" }, 2,StringSplitOptions.RemoveEmptyEntries);
-            string[] messageLines = headerBody[0].Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+            List<string> method = new List<string>
+                {"GET", "POST", "PUT", "HEAD", "DELETE", "OPTIONS", "TRACE", "CONNECT"};
+            string[] headerBody = message.Split(new[] {"\r\n\r\n"}, 2, StringSplitOptions.RemoveEmptyEntries);
+            string[] messageLines = headerBody[0].Split(new[] {"\r\n"}, StringSplitOptions.RemoveEmptyEntries);
             string[] firstLine = messageLines[0].Split(' ');
             if (firstLine.Length != 3)
             {
                 return null;
             }
+
             if (firstLine[0].StartsWith("HTTP"))
             {
                 ResponseMessage response = new ResponseMessage()
@@ -80,10 +85,12 @@ namespace Puelloc
                 {
                     response.Text = headerBody[1];
                 }
-                for(int i = 1; i < messageLines.Length; i++)
+
+                for (int i = 1; i < messageLines.Length; i++)
                 {
                     response.Header.AddHeader(messageLines[i]);
                 }
+
                 return response;
             }
 
@@ -93,34 +100,29 @@ namespace Puelloc
                 {
                     Method = firstLine[0],
                     Url = WebUtility.UrlDecode(firstLine[1]),
-                    ProtocolVersion=firstLine[2]
+                    ProtocolVersion = firstLine[2]
                 };
                 if (headerBody.Length == 2)
                 {
                     requset.Text = headerBody[1];
                 }
+
                 for (int i = 1; i < messageLines.Length; i++)
                 {
                     requset.Header.AddHeader(messageLines[i]);
                 }
+
                 return requset;
             }
-
         }
     }
+
     public class RequsetMessage : Message
     {
-        public string Method
-        {
-            get;
-            protected internal set;
-        }
-        public string Url
-        {
-            get;
-            protected internal set;
-        }
-        public Dictionary<string, string> Querys
+        public string Method { get; protected internal set; }
+        public string Url { get; protected internal set; }
+
+        public Dictionary<string, string> UrlQuerys
         {
             get
             {
@@ -128,7 +130,8 @@ namespace Puelloc
                 if (temp.Length == 2)
                 {
                     string query = temp[1];
-                    return query.Split('&').Select(pair => pair.Split('=')).ToDictionary(keyvalue => keyvalue[0], keyvalue => keyvalue[1]);
+                    return query.Split('&').Select(pair => pair.Split('='))
+                        .ToDictionary(keyvalue => keyvalue[0], keyvalue => keyvalue[1]);
                 }
                 else
                 {
@@ -159,11 +162,12 @@ namespace Puelloc
             Text = text;
             Header.AddHeader("Content-Type", "text/plain; charset=utf-8");
         }
-        public static ResponseMessage TryGetFileResponse(string filePath,string basePath)
+        internal static string BasePath { get; set; }
+        public static ResponseMessage TryGetFileResponse(string filePath)
         {
             if (!Path.IsPathFullyQualified(filePath))
             {
-                filePath = basePath == null ? Path.GetFullPath(filePath) : Path.GetFullPath(filePath, basePath);
+                filePath = BasePath == null ? Path.GetFullPath(filePath) : Path.GetFullPath(filePath, BasePath);
             }
             if (!File.Exists(filePath))
             {
@@ -193,5 +197,5 @@ namespace Puelloc
             }
             Header.AddHeader("Content-Type", mime.ToString());
         }
-    }  
+    }
 }

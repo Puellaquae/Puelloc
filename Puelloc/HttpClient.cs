@@ -10,10 +10,11 @@ namespace Puelloc
     public class HttpClient
     {
         private readonly Setting _sets;
-        public HttpClient(Setting setting, params Pipe[] paths)
+        public HttpClient(Setting setting, params Pipe[] routes)
         {
             _sets = setting;
-            _patterns = new List<Pipe>(paths);
+            ResponseMessage.BasePath = _sets.BasePath;
+            _patterns = new List<Pipe>(routes);
         }
 
         private readonly List<Pipe> _patterns;
@@ -129,7 +130,7 @@ namespace Puelloc
                 {
                     url = "index.html";
                 }
-                return ResponseMessage.TryGetFileResponse(url,_sets.BasePath);
+                return ResponseMessage.TryGetFileResponse(url);
             }
         }
 
