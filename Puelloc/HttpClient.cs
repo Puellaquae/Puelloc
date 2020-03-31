@@ -100,6 +100,10 @@ namespace Puelloc
                     Log($"{aSid}:Send {req.Method} {req.Url}");
                 }
             }
+            catch(SocketException se)
+            {
+                Log($"Socket:{se.Message}");
+            }
             catch(Exception e)
             {
                 Log(e.Message);

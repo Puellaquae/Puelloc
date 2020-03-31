@@ -27,7 +27,7 @@ namespace Puelloc
 
     public abstract class Message
     {
-        protected internal byte[] Content { get; set; }
+        public byte[] Content { get; protected internal set; }
 
         public string Text
         {
