@@ -66,8 +66,8 @@ namespace Puelloc
         {
             List<string> method = new List<string>
                 {"GET", "POST", "PUT", "HEAD", "DELETE", "OPTIONS", "TRACE", "CONNECT"};
-            string[] headerBody = message.Split(new[] {"\r\n\r\n"}, 2, StringSplitOptions.RemoveEmptyEntries);
-            string[] messageLines = headerBody[0].Split(new[] {"\r\n"}, StringSplitOptions.RemoveEmptyEntries);
+            string[] headerBody = message.Split(new[] { "\r\n\r\n" }, 2, StringSplitOptions.RemoveEmptyEntries);
+            string[] messageLines = headerBody[0].Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
             string[] firstLine = messageLines[0].Split(' ');
             if (firstLine.Length != 3)
             {
@@ -176,7 +176,7 @@ namespace Puelloc
             else
             {
                 string extension = Path.GetExtension(filePath);
-                return new ResponseMessage(filePath,MIMEs.TryParse(extension));
+                return new ResponseMessage(filePath, MIMEs.TryParse(extension));
             }
         }
         public ResponseMessage(string absoluteFilePath, MIME mime, int status = 200)
@@ -196,6 +196,51 @@ namespace Puelloc
                 stream.Close();
             }
             Header.AddHeader("Content-Type", mime.ToString());
+        }
+        public static ResponseMessage TryGetRangeFileResponse(string filePath, int start, int end)
+        {
+            if (!Path.IsPathFullyQualified(filePath))
+            {
+                filePath = BasePath == null ? Path.GetFullPath(filePath) : Path.GetFullPath(filePath, BasePath);
+            }
+            if (!File.Exists(filePath))
+            {
+                return new ResponseMessage($"NOT FOUND {filePath}", 404);
+            }
+            else
+            {
+                string extension = Path.GetExtension(filePath);
+                return new ResponseMessage(filePath, start, end, MIMEs.TryParse(extension));
+            }
+        }
+        public ResponseMessage(string absoluteFilePath, int rangeStart, int rangeEnd, MIME mime, int status = 206)
+        {
+            if (!File.Exists(absoluteFilePath))
+            {
+                Status = 404;
+                Text = $"NOT FOUND {absoluteFilePath}";
+                Header.AddHeader("Content-Type", "text/plain; charset=utf-8");
+                return;
+            }
+            Status = status;
+            using FileStream stream = new FileInfo(absoluteFilePath).OpenRead();
+            byte[] buffer = new byte[stream.Length];
+            int len = (int)stream.Length;
+            rangeStart = rangeStart == -1 ? 0 : rangeStart;
+            rangeEnd = rangeEnd == -1 ? len - 1 : rangeEnd;
+            if (rangeStart <= rangeEnd && rangeEnd < len)
+            {
+                stream.Read(buffer, rangeStart, rangeEnd - rangeStart);
+                Content = buffer;
+                Header.AddHeader("Content-Type", mime.ToString());
+                Header.AddHeader("Content-Length", Content.Length.ToString());
+                Header.AddHeader("Content-Range", $"bytes {rangeStart}-{rangeEnd}/{len}");
+            }
+            else
+            {
+                Header.AddHeader("Content-Range", $"*/{len}");
+                Status = 416;
+            }
         }
     }
 }
