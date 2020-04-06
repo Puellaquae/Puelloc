@@ -42,3 +42,23 @@ class Program
     }
 }
 ```
+
+使用正则：
+
+```csharp
+class Program
+{
+    static ResponseMessage Hello(RequsetMessage message){
+        return new ResponseMessage("Hello World");
+    }
+    static void Main(string[] args)
+    {
+        Pipe hello = new Pipe("GET", new Regex(@"^/$", RegexOptions.Compiled), Hello);
+        Setting setting = new Setting();
+        HttpClient httpClient = new HttpClient(setting,hello);
+        httpClient.Listen();
+        while(flag);
+        httpClient.Stop();
+    }
+}
+```
