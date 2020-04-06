@@ -38,12 +38,13 @@ namespace Puelloc
                         Socket a = _socket.Accept();
                         Task.Run(() => Accept(a));
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         Log(e.Message);
                     }
                 }
-            }) {IsBackground = true};
+            })
+            { IsBackground = true };
             _acceptThread.Start();
         }
 
@@ -54,7 +55,7 @@ namespace Puelloc
             {
                 _socket.Shutdown(SocketShutdown.Both);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Log(e.Message);
             }
@@ -100,11 +101,11 @@ namespace Puelloc
                     Log($"{aSid}:Send {req.Method} {req.Url}");
                 }
             }
-            catch(SocketException se)
+            catch (SocketException se)
             {
                 Log($"Socket:{se.Message}");
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Log(e.Message);
             }
@@ -120,7 +121,7 @@ namespace Puelloc
         {
             if (message == null)
             {
-                return new ResponseMessage("CANNOT PARSE THE MESSAGE",400);
+                return new ResponseMessage("CANNOT PARSE THE MESSAGE", 400);
             }
             Pipe p = _patterns.Find(x => x.RouteMatch(message.Method, message.Url));
             if (p != null)
@@ -132,9 +133,16 @@ namespace Puelloc
                 string url = message.Url.StartsWith('/') ? message.Url.TrimStart('/') : message.Url;
                 if (url == "")
                 {
-                    url = "index.html";
+                    url = _sets.DefaultPage;
                 }
-                return ResponseMessage.TryGetFileResponse(url);
+                if (message.Header.ContainsKey("Range"))
+                {
+                    return ResponseMessage.TryGetRangeFileResponse(url, message.Header["Range"]);
+                }
+                else
+                {
+                    return ResponseMessage.TryGetFileResponse(url);
+                }
             }
         }
 

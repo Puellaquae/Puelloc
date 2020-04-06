@@ -7,24 +7,6 @@ using System.Text;
 
 namespace Puelloc
 {
-    public class Pipe
-    {
-        public Func<string, string, bool> RouteMatch { get; }
-        public Func<RequsetMessage, ResponseMessage> Proc { get; }
-
-        public Pipe(Func<string, string, bool> route, Func<RequsetMessage, ResponseMessage> proc)
-        {
-            RouteMatch = route;
-            Proc = proc;
-        }
-
-        public Pipe(string method, string urlStart, Func<RequsetMessage, ResponseMessage> proc)
-        {
-            RouteMatch = (requsetmethod, requseturl) => requsetmethod == method && requseturl.StartsWith(urlStart);
-            Proc = proc;
-        }
-    }
-
     public abstract class Message
     {
         public byte[] Content { get; protected internal set; }
@@ -196,6 +178,39 @@ namespace Puelloc
                 stream.Close();
             }
             Header.AddHeader("Content-Type", mime.ToString());
+        }
+        private static (int start, int end)[] RangeParser(string range)
+        {
+            string[] temp1 = range.Split('=');
+            if (temp1.Length != 2)
+            {
+                return null;
+            }
+            string[] temp2 = temp1[1].Split(',');
+            List<(int, int)> ranges = new List<(int, int)>();
+            foreach (string temp3 in temp2)
+            {
+                if (temp3.StartsWith("-"))
+                {
+                    ranges.Add((-1, int.Parse(temp3.TrimStart('-'))));
+                }
+                else if (temp3.EndsWith("-"))
+                {
+                    ranges.Add((int.Parse(temp3.TrimEnd('-')), -1));
+                }
+                else
+                {
+                    string[] temp4 = temp3.Split('-');
+                    ranges.Add((int.Parse(temp4[0]), int.Parse(temp4[1])));
+                }
+            }
+            return ranges.ToArray();
+        }
+        public static ResponseMessage TryGetRangeFileResponse(string filePath, string range)
+        {
+            var ranges = RangeParser(range);
+            if (ranges == null || ranges.Length == 0) { return new ResponseMessage(400); }
+            return TryGetRangeFileResponse(filePath, ranges[0].start, ranges[0].end);
         }
         public static ResponseMessage TryGetRangeFileResponse(string filePath, int start, int end)
         {

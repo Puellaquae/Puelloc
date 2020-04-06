@@ -13,5 +13,6 @@ namespace Puelloc
         public int ReceiveTimeOut { get; set; } = 10000;
         public int SendTimeOut { get; set; } = 10000;
         public string BasePath { get; set; }
+        public string DefaultPage { get; set; } = "index.html";
     }
 }

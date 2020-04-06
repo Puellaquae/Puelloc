@@ -58,7 +58,7 @@ namespace Puelloc
             //服务器无法根据客户端请求的内容特性完成请求
             { 407, "Proxy Authentication Required" },
             //请求要求代理的身份认证，与401类似，但请求者应当使用代理进行授权
-            { 408, "Request Time-out" },
+            { 408, "Request Timeout" },
             //服务器等待客户端发送的请求时间过长，超时
             { 409, "Conflict" },
             //服务器完成客户端的 PUT 请求时可能返回此代码，服务器处理请求时发生了冲突
@@ -68,16 +68,24 @@ namespace Puelloc
             //服务器无法处理客户端发送的不带Content -Length的请求信息
             { 412, "Precondition Failed" },
             //客户端请求信息的先决条件错误
-            { 413, "Request Entity Too Large" },
+            { 413, "Payload Too Large" },
             //由于请求的实体过大，服务器无法处理，因此拒绝请求。为防止客户端的连续请求，服务器可能会关闭连接。如果只是服务器暂时无法处理，则会包含一个Retry-After的响应信息
-            { 414, "Request-URI Too Large" },
+            { 414, "URI Too Long" },
             //请求的URI过长（URI通常为网址），服务器无法处理
             { 415, "Unsupported Media Type" },
             //服务器无法处理请求附带的媒体格式
-            { 416, "Requested range not satisfiable" },
+            { 416, "Range Not Satisfiable" },
             //客户端请求的范围无效
             { 417, "Expectation Failed" },
             //服务器无法满足Expect的请求头信息
+            { 418, "I'm a teapot" },
+            { 422, "Unprocessable Entity" },
+            { 425, "Too Early" },
+            { 426, "Upgrade Required" },
+            { 428, "Precondition Required" },
+            { 429, "Too Many Requset" },
+            { 431, "Requset Header Fields Too Large" },
+            { 451, "Unavailable For Legal Reasons" },
             { 500, "Internal Server Error" },
             //服务器内部错误，无法完成请求
             { 501, "Not Implemented" },
@@ -86,32 +94,30 @@ namespace Puelloc
             //作为网关或者代理工作的服务器尝试执行请求时，从远程服务器接收到了一个无效的响应
             { 503, "Service Unavailable" },
             //由于超载或系统维护，服务器暂时的无法处理客户端的请求。延时的长度可包含在服务器的Retry-After头信息中
-            { 504, "Gateway Time-out" },
+            { 504, "Gateway Timeout" },
             //充当网关或代理的服务器，未及时从远端服务器获取请求
             { 505, "HTTP Version not supported" },
             //服务器不支持请求的HTTP协议的版本，无法完成处理
+            { 511, "Network Authentication Required" }
         };
         public static string GetName(int code)
         {
             return Codes.ContainsKey(code) ? Codes[code] : null;
         }
     }
-    public class HttpHeader
+    public class HttpHeader : Dictionary<string, string>
     {
-        private readonly Dictionary<string, string> _headers;
-        
         public HttpHeader()
         {
-            _headers = new Dictionary<string, string>
-            {
-                {"Sever", "Bangmoe"}, {"Accept-Ranges", "bytes"}, {"Date", DateTime.UtcNow.ToString("r")}
-            };
+            Add("Sever", "Puelloc");
+            Add("Accept-Ranges", "bytes");
+            Add("Date", DateTime.UtcNow.ToString("r"));
         }
 
         public override string ToString()
         {
             StringBuilder res = new StringBuilder();
-            foreach ((string key, string value) in _headers)
+            foreach ((string key, string value) in this)
             {
                 res.AppendLine(key + ": " + value);
             }
@@ -126,10 +132,10 @@ namespace Puelloc
         /// <param name="header"></param>
         public void AddHeader(string header)
         {
-            string[] h = header.Split(new[] { ':' },2);
+            string[] h = header.Split(new[] { ':' }, 2);
             if (h.Length == 2)
             {
-                _headers[h[0].Trim()] = h[1].Trim();
+                this[h[0].Trim()] = h[1].Trim();
             }
         }
 
@@ -139,9 +145,9 @@ namespace Puelloc
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>
-        public void AddHeader(string name,string value)
+        public void AddHeader(string name, string value)
         {
-            _headers[name] = value;
+            this[name] = value;
         }
     }
 }
