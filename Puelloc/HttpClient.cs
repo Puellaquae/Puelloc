@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -19,26 +21,65 @@ namespace Puelloc
 
         private readonly List<Pipe> _patterns;
         private Socket _socket;
-        private bool _running = false;
         private Thread _acceptThread = null;
+
+        public bool IsRunning { get; private set; } = false;
+
+        public IPEndPoint LocalEndPoint => _sets.BindIP;
+
         public void Listen()
         {
-            _running = true;
+            if (_sets.BindIP.Port != 0)
+            {
+                var ipinf = IPGlobalProperties.GetIPGlobalProperties();
+                foreach (var endpoint in ipinf.GetActiveTcpListeners())
+                {
+                    if (endpoint.Port == _sets.BindIP.Port)
+                    {
+                        if (_sets.IsAutoChangePortIfHasUsed)
+                        {
+                            _sets.BindIP.Port = 0;
+                        }
+                        else
+                        {
+                            Log($"Port {_sets.BindIP.Port} has been used.");
+                            return;
+                        }
+                    }
+                }
+            }
+
             _socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            _socket.Bind(_sets.BindIP);
+
+            try
+            {
+                _socket.Bind(_sets.BindIP);
+            }
+            catch (SocketException e)
+            {
+                Log($"Bind Fail {e.Message}");
+                return;
+            }
+
+            if (((IPEndPoint)_socket.LocalEndPoint).Port != _sets.BindIP.Port)
+            {
+                _sets.BindIP.Port = ((IPEndPoint)_socket.LocalEndPoint).Port;
+                Log($"Port has been auto changed to {_sets.BindIP.Port}");
+            }
+
             _socket.ReceiveTimeout = _sets.ReceiveTimeOut;
             _socket.SendTimeout = _sets.SendTimeOut;
             _socket.Listen(_sets.BackLog);
             _acceptThread = new Thread(() =>
             {
-                while (_running)
+                while (IsRunning)
                 {
                     try
                     {
                         Socket a = _socket.Accept();
                         Task.Run(() => Accept(a));
                     }
-                    catch (Exception e)
+                    catch (SocketException e)
                     {
                         Log(e.Message);
                     }
@@ -46,31 +87,34 @@ namespace Puelloc
             })
             { IsBackground = true };
             _acceptThread.Start();
+            IsRunning = true;
         }
 
         public void Stop()
         {
-            _running = false;
+            IsRunning = false;
             try
             {
                 _socket.Shutdown(SocketShutdown.Both);
             }
-            catch (Exception e)
-            {
-                Log(e.Message);
-            }
+            catch (SocketException) { }
 
             _socket.Close();
-            while (_asPoolNum > 0)
+            while (AcceptConnectCounts > 0)
             {
             }
         }
 
-        private int _asPoolNum;
+        public void AddRoutes(params Pipe[] routes)
+        {
+            _patterns.AddRange(routes);
+        }
+
+        public int AcceptConnectCounts { get; private set; }
 
         private void Accept(Socket acceptSocket)
         {
-            int aSid = _asPoolNum++;
+            int aSid = AcceptConnectCounts++;
             Log($"New Accept {aSid}");
             try
             {
@@ -108,12 +152,13 @@ namespace Puelloc
             catch (Exception e)
             {
                 Log(e.Message);
+                throw;
             }
             finally
             {
                 acceptSocket.Close();
                 Log($"Close Accept {aSid}");
-                _asPoolNum--;
+                AcceptConnectCounts--;
             }
         }
 

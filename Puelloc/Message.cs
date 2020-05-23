@@ -134,10 +134,12 @@ namespace Puelloc
         public string StatusMessage => HttpResponseStatusCodes.GetName(Status);
 
         protected internal ResponseMessage() { }
+
         public ResponseMessage(int status)
         {
             Status = status;
         }
+
         public ResponseMessage(string text, int status = 200)
         {
             Status = status;

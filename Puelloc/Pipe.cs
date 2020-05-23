@@ -14,13 +14,13 @@ namespace Puelloc
             Proc = proc;
         }
 
-        public Pipe(string method, string urlStart, Func<RequsetMessage, ResponseMessage> proc)
+        public Pipe(string method, string url, Func<RequsetMessage, ResponseMessage> proc)
         {
-            RouteMatch = (requsetMethod, requsetUrl) => requsetMethod == method && requsetUrl.StartsWith(urlStart);
+            RouteMatch = (requsetMethod, requsetUrl) => requsetMethod == method && requsetUrl == url;
             Proc = proc;
         }
 
-        public Pipe(string method, Regex urlRegaxPattern, Func<RequsetMessage,ResponseMessage> proc)
+        public Pipe(string method, Regex urlRegaxPattern, Func<RequsetMessage, ResponseMessage> proc)
         {
             RouteMatch = (requsetMethod, requsetUrl) => requsetMethod == method && urlRegaxPattern.IsMatch(requsetUrl);
             Proc = proc;

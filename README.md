@@ -1,6 +1,6 @@
 # Puelloc
 
-一个简陋级的HTTP服务端
+一个简陋级的基于socket的HTTP服务端
 
 ## 快速上手
 
